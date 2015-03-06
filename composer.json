@@ -1,0 +1,15 @@
+{
+    "name": "koala-framework/kwf-facebook-auth",
+    "description": "Facebook Login (OAuth2 SSO) for Koala Framework",
+    "homepage": "http://www.koala-framework.org/",
+    "license": "BSD-2-Clause",
+    "require": {
+        "koala-framework/koala-framework": "> 3.8",
+        "facebook/php-sdk-v4": "4.0.*"
+    },
+    "autoload": {
+        "psr-0": {
+            "Kwf_FacebookAuth_": ""
+        }
+    }
+}
