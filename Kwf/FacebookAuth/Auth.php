@@ -92,4 +92,17 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
     {
         return true;
     }
+
+    public function isRedirectCompatibleWith(Kwf_User_Auth_Interface_Redirect $auth)
+    {
+        while ($auth instanceof Kwf_User_Auth_Proxy_Abstract || $auth instanceof Kwf_User_Auth_Union_Abstract) {
+            $auth = $auth->getInnerAuth();
+        }
+        if ($auth instanceof Kwf_FacebookAuth_Auth
+            && $this->_clientId == $auth->_clientId
+        ) {
+            return true;
+        }
+        return false;
+    }
 }
