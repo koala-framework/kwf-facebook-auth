@@ -4,11 +4,15 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
     protected $_client;
     protected $_clientId;
     protected $_clientSecret;
+    protected $_registerRole;
+    protected $_matchByEmail;
 
     public function __construct(array $config, $model)
     {
         $this->_clientId = $config['clientId'];
         $this->_clientSecret = $config['clientSecret'];
+        $this->_registerRole = isset($config['registerRole']) ? $config['registerRole'] : null;
+        $this->_matchByEmail = isset($config['matchByEmail']) ? $config['matchByEmail'] : null;
         parent::__construct($model);
     }
 
@@ -22,7 +26,7 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
         $url = 'https://www.facebook.com/dialog/oauth';
         $url .= '?'.http_build_query(array(
             'scope' => 'email',
-            'state'=> json_encode($state),
+            'state'=> $state,
             'redirect_uri' => $redirectBackUrl,
             'response_type' => 'code',
             'client_id' => $this->_clientId,
@@ -42,10 +46,10 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
         $c = new Zend_Http_Client($url);
         $response = $c->request('GET');
         if (!$response->isSuccessful()) throw new Kwf_Exception("Request failed: ".$response->getBody());
-        parse_str($response->getBody(), $r);
+        $r = json_decode($response->getBody(), true);
         $accessToken = $r['access_token'];
 
-        $url = 'https://graph.facebook.com/me?access_token='.$accessToken;
+        $url = 'https://graph.facebook.com/me?access_token='.$accessToken.'&fields=name,email,first_name,last_name,gender';
         $c = new Zend_Http_Client($url);
         $response = $c->request('GET');
         if (!$response->isSuccessful()) throw new Kwf_Exception("Request failed: ".$response->getBody());
@@ -54,12 +58,9 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
         return $userData;
     }
 
-    public function getUserToLoginByParams($redirectBackUrl, array $params)
+    public function getUserToLoginByParams(array $params)
     {
-        $userData = $this->_getUserDataByParams($redirectBackUrl, $params);
-        $s = new Kwf_Model_Select();
-        $s->whereEquals('facebook_user_id', $userData->id);
-        return $this->_model->getRow($s);
+        return null;
     }
 
     public function associateUserByParams(Kwf_Model_Row_Interface $user, $redirectBackUrl, array $params)
@@ -71,7 +72,7 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
 
     public function showInBackend()
     {
-        return true;
+        return false;
     }
 
     public function showInFrontend()
@@ -104,5 +105,43 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
             return true;
         }
         return false;
+    }
+
+    public function getLoginRedirectHtml($redirectBackUrl, $state, $formValues)
+    {
+        return null;
+    }
+
+    public function getUserToLoginByCallbackParams($redirectBackUrl, array $params)
+    {
+        $userData = $this->_getUserDataByParams($redirectBackUrl, $params);
+        $s = new Kwf_Model_Select();
+        $s->whereEquals('facebook_user_id', $userData->id);
+        $ret = $this->_model->getRow($s);
+
+        if (!$ret && $this->_matchByEmail) {
+            $s = new Kwf_Model_Select();
+            $s->whereEquals('email', $userData->email);
+            $ret = $this->_model->getRow($s);
+        }
+
+        if (!$ret && $this->_registerRole) {
+            $ret = $this->_model->createUserRow($userData->email);
+            $ret->role = $this->_registerRole;
+            $ret->facebook_user_id = $userData->id;
+            $ret->firstname = $userData->first_name;
+            $ret->lastname = $userData->last_name;
+            $ret->gender = $userData->gender == 'male' ? 'male' : ($userData->gender == 'female' ? 'female' : '');
+            if ($ret instanceof Kwf_User_EditRow) $ret->setSendMails(false); //we don't want a register mail
+            $ret->save();
+        }
+        return $ret;
+    }
+
+    public function associateUserByCallbackParams(Kwf_Model_Row_Interface $user, $redirectBackUrl, array $params)
+    {
+        $userData = $this->_getUserDataByParams($redirectBackUrl, $params);
+        $user->facebook_user_id =$userData->id;
+        $user->save();
     }
 }
