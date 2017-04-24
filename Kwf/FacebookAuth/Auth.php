@@ -75,6 +75,11 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
         return false;
     }
 
+    public function showForActivation()
+    {
+        return false;
+    }
+
     public function showInFrontend()
     {
         return true;
