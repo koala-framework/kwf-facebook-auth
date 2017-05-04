@@ -43,7 +43,13 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
             'client_secret' => $this->_clientSecret,
             'code'=> $params['code'],
         ));
-        $c = new Zend_Http_Client($url);
+        $httpClientConfig = array();
+        if (Kwf_Config::getValue('http.proxy.host')) {
+            $httpClientConfig['adapter'] = 'Zend_Http_Client_Adapter_Curl';
+            $httpClientConfig['proxy_host'] = Kwf_Config::getValue('http.proxy.host');
+            $httpClientConfig['proxy_port'] = Kwf_Config::getValue('http.proxy.port');
+        }
+        $c = new Zend_Http_Client($url, $httpClientConfig);
         $response = $c->request('GET');
         if (!$response->isSuccessful()) throw new Kwf_Exception("Request failed: ".$response->getBody());
         $r = json_decode($response->getBody(), true);
