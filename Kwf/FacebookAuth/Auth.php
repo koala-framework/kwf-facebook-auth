@@ -56,7 +56,7 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
         $accessToken = $r['access_token'];
 
         $url = 'https://graph.facebook.com/me?access_token='.$accessToken.'&fields=name,email,first_name,last_name,gender';
-        $c = new Zend_Http_Client($url);
+        $c = new Zend_Http_Client($url, $httpClientConfig);
         $response = $c->request('GET');
         if (!$response->isSuccessful()) throw new Kwf_Exception("Request failed: ".$response->getBody());
         $userData = json_decode($response->getBody());
