@@ -134,8 +134,10 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
             $s = new Kwf_Model_Select();
             $s->whereEquals('email', $userData->email);
             $ret = $this->_model->getRow($s);
-            $ret->facebook_user_id = $userData->id;
-            $ret->save();
+            if ($ret) {
+                $ret->facebook_user_id = $userData->id;
+                $ret->save();
+            }
         }
 
         if (!$ret && $this->_registerRole) {
