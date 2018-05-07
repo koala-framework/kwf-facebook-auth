@@ -6,6 +6,7 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
     protected $_clientSecret;
     protected $_registerRole;
     protected $_matchByEmail;
+    protected $_storeUserInSession;
 
     public function __construct(array $config, $model)
     {
@@ -13,6 +14,7 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
         $this->_clientSecret = $config['clientSecret'];
         $this->_registerRole = isset($config['registerRole']) ? $config['registerRole'] : null;
         $this->_matchByEmail = isset($config['matchByEmail']) ? $config['matchByEmail'] : null;
+        $this->_storeUserInSession = isset($config['storeUserInSession']) ? $config['storeUserInSession'] : false;
         parent::__construct($model);
     }
 
@@ -137,6 +139,26 @@ class Kwf_FacebookAuth_Auth extends Kwf_User_Auth_Abstract implements Kwf_User_A
             if ($ret) {
                 $ret->facebook_user_id = $userData->id;
                 $ret->save();
+            }
+        }
+
+        if ($this->_storeUserInSession) {
+            $kwfUsersModel = Kwf_Model_Abstract::getInstance('KwfUsers');
+            $select = new Kwf_Model_Select();
+            $select->whereEquals('email', $userData->email);
+            $existingUser = $kwfUsersModel->getRow($select);
+            $select->where(new Kwf_Model_Select_Expr_IsNull('accepted_terms_and_conditions'));
+            $existingUserWithoutTermsAndConditionsAccepted = $kwfUsersModel->getRow($select);
+
+            if ($existingUserWithoutTermsAndConditionsAccepted || !$existingUser) {
+                $session = new Kwf_Session_Namespace('FacebookAuth');
+                $session->userData = $userData;
+                $redirectUrl = Kwf_Component_Data_Root::getInstance()->getChildComponent('-website')->getChildComponent('_login')->getUrl();
+                if (isset($params['redirect'])) {
+                    Kwf_Util_Redirect::redirect($redirectUrl . '?redirect=' . $params['redirect']);
+                } else {
+                    Kwf_Util_Redirect::redirect($redirectUrl);
+                }
             }
         }
 
